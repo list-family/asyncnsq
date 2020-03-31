@@ -95,7 +95,7 @@ class Writer:
             self._status = consts.CLOSED
         except Exception as tmp:
             logger.info(
-                'conn close failed,maybe its closed already or init')
+                'conn close failed, maybe its closed already or init')
             logger.exception(tmp)
         await self.connect()
 
@@ -106,7 +106,7 @@ class Writer:
             logger.debug("autoreconnect check loop")
             if not (self._status == consts.CONNECTED):
                 logger.debug(
-                    f"writer close({self._status})detected,reconnect")
+                    f"writer close({self._status}) detected, reconnect")
                 conn_id = self.id if self._conn else 'init'
                 logger.info('reconnect writer{}'.format(conn_id))
                 try:

@@ -5,8 +5,11 @@ import time
 from asyncnsq.http import NsqLookupd
 from asyncnsq.tcp.reader_rdy import RdyControl
 from functools import partial
+
+from . import consts
 from .connection import create_connection
 from .consts import SUB
+from ..utils import retry_iterator
 
 logger = logging.getLogger(__package__)
 
@@ -59,6 +62,7 @@ class Reader:
         self._max_in_flight = max_in_flight
         self._loop = loop or asyncio.get_event_loop()
         self._queue = asyncio.Queue(loop=self._loop)
+        self._redistribute_task = None
 
         self._connections = {}
 
@@ -67,10 +71,13 @@ class Reader:
         self._rdy_control = None
         self._max_in_flight = max_in_flight
 
+        self._status = consts.INIT
+
         self._is_subscribe = False
         self._redistribute_timeout = 5  # sec
         self._lookupd_poll_time = 30  # sec
         self.topic = None
+        self.channel = None
         self._rdy_control = RdyControl(idle_timeout=self._idle_timeout,
                                        max_in_flight=self._max_in_flight,
                                        loop=self._loop)
@@ -91,6 +98,8 @@ class Reader:
                 await self.prepare_conn(conn)
             self._connections[conn.id] = conn
             self._rdy_control.add_connections(self._connections)
+            self._status = consts.CONNECTED
+        self._loop.create_task(self.auto_reconnect())
 
     async def prepare_conn(self, conn):
         conn.rdy_state = 2
@@ -133,14 +142,19 @@ class Reader:
 
     async def subscribe(self, topic, channel):
         self.topic = topic
+        self.channel = channel
         self._is_subscribe = True
+
         if self._lookupd_http_addresses:
             await self._lookupd()
         for conn in self._connections.values():
             await self.sub(conn, topic, channel)
             if conn._on_rdy_changed_cb is not None:
                 conn._on_rdy_changed_cb(conn.id)
-        self._redistribute_task = self._loop.create_task(self._redistribute())
+        if not self._redistribute_task:
+            self._redistribute_task = self._loop.create_task(
+                self._redistribute()
+            )
 
     async def sub(self, conn, topic, channel):
         await conn.execute(SUB, topic, channel)
@@ -160,6 +174,45 @@ class Reader:
         while self._is_subscribe:
             result = await self._queue.get()
             yield result
+
+    async def reconnect(self, conn):
+        logger.debug(f'reader reconnect {conn.id}')
+
+        if not conn.closed:
+            return
+
+        conn = await create_connection(
+            conn._host, conn._port, queue=self._queue, loop=self._loop)
+        await self.prepare_conn(conn)
+
+        logger.info(f'Connection {conn.id} established')
+        self._connections[conn.id] = conn
+        self._rdy_control.add_connections(self._connections)
+
+        await self.subscribe(self.topic, self.channel)
+        # TODO: _cmd_queue is not working here...
+        await self._rdy_control._update_rdy(conn.id)
+
+    async def auto_reconnect(self):
+        logger.debug('reader autoreconnect')
+        timeout_generator = retry_iterator(init_delay=0.1, max_delay=10.0)
+        while True:
+            logger.debug('autoreconnect check loop')
+
+            if self._status != consts.RECONNECTING:
+                for conn in list(self._connections.values()).copy():
+                    if conn.closed:
+                        logger.info('Reconnect reader {}'.format(conn.id))
+                        self._status = consts.RECONNECTING
+
+                        try:
+                            await self.reconnect(conn)
+                        except ConnectionError:
+                            logger.error(f'Can not connect to: {conn.id}')
+                self._status = consts.CONNECTED
+
+            t = next(timeout_generator)
+            await asyncio.sleep(t, loop=self._loop)
 
     def is_starved(self):
         conns = self._connections.values()

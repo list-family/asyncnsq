@@ -1,9 +1,11 @@
 import asyncio
-import time
 import random
+import time
+
 from .consts import RDY
-REDISTRIBUTE = 0
-CHANGE_CONN_RDY = 1
+
+CHANGE_CONN_RDY = 0
+REDISTRIBUTE = 1
 
 
 class RdyControl:
@@ -15,7 +17,7 @@ class RdyControl:
         self._max_in_flight = max_in_flight
         self._loop = loop or asyncio.get_event_loop()
 
-        self._cmd_queue = asyncio.Queue(loop=self._loop)
+        self._cmd_queue = asyncio.PriorityQueue(loop=self._loop)
 
         self._expected_rdy_state = {}
 
@@ -45,8 +47,7 @@ class RdyControl:
                 await self._redistribute_rdy_state()
             elif cmd == CHANGE_CONN_RDY:
                 await self._update_rdy(*args)
-            else:
-                RuntimeError("Should never be here")
+            self._cmd_queue.task_done()
 
     def remove_connection(self, conn):
         self._connections.pop(conn.id)
