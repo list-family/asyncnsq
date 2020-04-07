@@ -74,8 +74,11 @@ class RdyControl:
 
         rdy_coros = [
             conn.execute(RDY, 0) for conn in connections
-            if not (conn.rdy_state == 0 or
-                    (time.time() - conn.last_message) < self._idle_timeout)
+            if not (
+                    conn.rdy_state == 0
+                    or time.time() - getattr(conn, '_last_message', 0)
+                    < self._idle_timeout
+            )
         ]
 
         distributed_rdy = sum(c.rdy_state for c in connections)
@@ -95,3 +98,8 @@ class RdyControl:
         rdy_state = max(1, self._max_in_flight /
                         max(1, len(self._connections)))
         await conn.execute(RDY, int(rdy_state))
+
+    async def stop(self):
+        self._is_working = False
+        self._distributor_task.cancel()
+        await self._distributor_task

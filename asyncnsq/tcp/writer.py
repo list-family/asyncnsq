@@ -61,7 +61,7 @@ class Writer:
         self._queue = queue or asyncio.Queue(loop=self._loop)
         self._status = consts.INIT
         self._on_rdy_changed_cb = None
-        self._loop.create_task(self.auto_reconnect())
+        self._reconnect_task = None
 
     async def connect(self):
         logger.debug("writer init connect")
@@ -71,6 +71,7 @@ class Writer:
         self._conn._on_message = self._on_message
         await self._conn.identify(**self._config)
         self._status = consts.CONNECTED
+        self._reconnect_task = self._loop.create_task(self.auto_reconnect())
 
     def _on_message(self, msg):
         # should not be coroutine
@@ -183,6 +184,7 @@ class Writer:
         return self._conn.endpoint
 
     def close(self):
+        self._reconnect_task.cancel()
         self._conn.close()
         self._status = consts.CLOSED
 

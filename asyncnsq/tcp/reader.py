@@ -63,6 +63,7 @@ class Reader:
         self._loop = loop or asyncio.get_event_loop()
         self._queue = asyncio.Queue(loop=self._loop)
         self._redistribute_task = None
+        self._reconnect_task = None
 
         self._connections = {}
 
@@ -227,3 +228,12 @@ class Reader:
     async def _lookupd(self):
         host, port = random.choice(self._lookupd_http_addresses)
         await self._poll_lookupd(host, port)
+
+    def stop(self):
+        self._is_subscribe = False
+        if self._redistribute_task:
+            self._redistribute_task.cancel()
+        self._reconnect_task.cancel()
+        for connection in self._connections:
+            connection.close()
+        self._loop.run_until_complete(self._rdy_control.stop())
