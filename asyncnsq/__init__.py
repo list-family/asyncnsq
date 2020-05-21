@@ -1,5 +1,3 @@
-__version__ = '1.1.2'
-from asyncnsq.tcp.writer import create_writer
-from asyncnsq.tcp.reader import create_reader
+from .tcp.connection import open_connection
 
-__all__ = ['create_writer', 'create_reader', 'tcp', 'http']
+__all__ = ['tcp', 'http', 'open_connection']

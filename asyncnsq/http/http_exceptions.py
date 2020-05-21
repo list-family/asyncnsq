@@ -1,10 +1,10 @@
 
 
-class NsqHttpException(Exception):
+class NSQHTTPException(Exception):
     """XXX"""
 
 
-class TransportError(NsqHttpException):
+class TransportError(NSQHTTPException):
     """XXX"""
     @property
     def status_code(self):
@@ -25,7 +25,7 @@ class TransportError(NsqHttpException):
         return 'TransportError(%s, %r)' % (self.status_code, self.error)
 
 
-class HttpConnectionError(TransportError):
+class HTTPConnectionError(TransportError):
     """XXX"""
 
     def __str__(self):
@@ -43,6 +43,7 @@ class ConflictError(TransportError):
 
 class RequestError(TransportError):
     """Exception representing a 400 status code."""
+
 
 # more generic mappings from status_code to python exceptions
 HTTP_EXCEPTIONS = {

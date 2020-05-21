@@ -1,9 +1,9 @@
 import asyncio
-from .base import NsqHTTPConnection
+from .base import NSQHTTPConnection
 from ..utils import _convert_to_str
 
 
-class NsqdHttpWriter(NsqHTTPConnection):
+class NSQDHTTPWriter(NSQHTTPConnection):
     """
     :see: http://nsq.io/components/nsqd.html
     """

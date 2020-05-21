@@ -1,29 +1,16 @@
 import asyncio
-import sys
-import os
-from asyncnsq import create_writer
+from asyncnsq import open_connection
 
 
-def main():
+async def main():
+    nsq = await open_connection()
+    print(await nsq.pub('test_topic', 'test_message'))
+    print(await nsq.dpub('test_topic', 'test_message', 0))
+    print(await nsq.mpub('test_topic', list('test_message')))
 
-    loop = asyncio.get_event_loop()
-
-    async def go():
-        writer = await create_writer(host='127.0.0.1', port=4150,
-                                     heartbeat_interval=30000,
-                                     feature_negotiation=True,
-                                     tls_v1=True,
-                                     snappy=False,
-                                     deflate=False,
-                                     deflate_level=0,
-                                     loop=loop)
-        for i in range(100):
-            await writer.pub('test_async_nsq', 'test_async_nsq:{i}'.format(i=i))
-            await writer.dpub('test_async_nsq', i * 1000,
-                              'test_delay_async_nsq:{i}'.format(i=i))
-
-    loop.run_until_complete(go())
+    await nsq.close()
 
 
 if __name__ == '__main__':
-    main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())

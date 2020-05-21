@@ -1,52 +1,24 @@
 import asyncio
-import sys
-import os
-import logging
-from asyncnsq import create_reader
-from asyncnsq.utils import get_logger
-
-logger = get_logger()
+from asyncnsq import open_connection
 
 
-def main():
+async def main():
+    nsq = await open_connection()
+    await nsq.pub('test_topic', 'test_message')
 
-    loop = asyncio.get_event_loop()
+    await nsq.subscribe('test_topic', 'channel1', 2)
+    processed_messages = 0
+    async for message in nsq.messages():
+        await message.fin()
+        print('Message #{}: {}'.format(processed_messages, message.body))
+        processed_messages += 1
 
-    async def go():
-        try:
-            reader = await create_reader(
-                lookupd_http_addresses=[
-                    ('127.0.0.1', 4161)],
-                max_in_flight=200)
-            await reader.subscribe('test_async_nsq', 'nsq')
-            async for message in reader.messages():
-                print(message.body)
-                await message.fin()
-        except Exception as tmp:
-            logger.exception(tmp)
+        if processed_messages == 10:
+            await nsq.cls()
 
-    loop.run_until_complete(go())
-
-
-def tcp_main():
-
-    loop = asyncio.get_event_loop()
-
-    async def go():
-        try:
-            reader = await create_reader(
-                nsqd_tcp_addresses=['127.0.0.1:4150'],
-                max_in_flight=200)
-            await reader.subscribe('test_async_nsq', 'nsq')
-            async for message in reader.messages():
-                print(message.body)
-                await message.fin()
-        except Exception as tmp:
-            logger.exception(tmp)
-
-    loop.run_until_complete(go())
+    await nsq.close()
 
 
 if __name__ == '__main__':
-    # main()
-    tcp_main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())

@@ -2,11 +2,11 @@ import asyncio
 import json
 
 import aiohttp
-from .http_exceptions import HTTP_EXCEPTIONS, NsqHttpException
+from .http_exceptions import HTTP_EXCEPTIONS, NSQHTTPException
 from ..utils import _convert_to_str
 
 
-class NsqHTTPConnection:
+class NSQHTTPConnection:
     """XXX"""
 
     def __init__(self, host='127.0.0.1', port=4150, *, loop):
@@ -46,7 +46,7 @@ class NsqHTTPConnection:
                 extra = json.loads(resp_body)
             except ValueError:
                 pass
-            exc_class = HTTP_EXCEPTIONS.get(resp.status, NsqHttpException)
+            exc_class = HTTP_EXCEPTIONS.get(resp.status, NSQHTTPException)
             raise exc_class(resp.status, resp_body, extra)
         return response
 

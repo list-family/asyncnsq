@@ -1,8 +1,6 @@
-import random
 import re
 import logging
 from urllib.parse import urlparse
-
 
 TOPIC_NAME_RE = re.compile(r'^[\.a-zA-Z0-9_-]+$')
 CHANNEL_NAME_RE = re.compile(r'^[\.a-zA-Z0-9_-]+(#ephemeral)?$')
@@ -71,43 +69,13 @@ def _convert_to_str(value):
     return converted_value
 
 
-class MaxRetriesExided(Exception):
+class MaxRetriesExcited(Exception):
     pass
 
 
-def retry_iterator(init_delay=0.1, max_delay=10.0, factor=2.7182818284590451,
-                   jitter=0.11962656472, max_retries=None, now=True):
-    """Based on twisted reconnection factory.
-
-    :param init_delay:
-    :param max_delay:
-    :param factor:
-    :param jitter:
-    :param max_retries:
-    :param now:
-    :return:
-    """
-    retries, delay = 0, init_delay
-    if now:
-        retries += 1
-        yield 0.0
-    while not max_retries or retries < max_retries:
-        retries += 1
-        delay *= factor
-        delay = random.normalvariate(
-            delay, delay * jitter) if jitter else delay
-        delay = min(delay, max_delay) if max_delay else delay
-        yield delay
-    else:
-        raise MaxRetriesExided()
-
-
-def get_logger(log_level=None):
-    logger = logging.getLogger("AsyncNsq")
-    FORMAT = "%(asctime)s - %(name)s - %(levelname)s - \n%(message)s"
-    logging.basicConfig(format=FORMAT)
-    if log_level == 'debug':
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
+def get_logger(debug: bool = False):
+    logger = logging.getLogger('AsyncNSQ')
+    log_format = "%(asctime)s - %(levelname)s - %(name)s: %(message)s"
+    logging.basicConfig(format=log_format)
+    logger.setLevel(logging.DEBUG if debug else logging.INFO)
     return logger

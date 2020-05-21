@@ -1,8 +1,8 @@
 import asyncio
-from .base import NsqHTTPConnection
+from .base import NSQHTTPConnection
 
 
-class NsqLookupd(NsqHTTPConnection):
+class NsqLookupd(NSQHTTPConnection):
     """
     :see: http://nsq.io/components/nsqlookupd.html
     """
